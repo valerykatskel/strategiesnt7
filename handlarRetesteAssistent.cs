@@ -728,23 +728,23 @@ namespace NinjaTrader.Strategy{
 					Print (Instrument.FullName.ToString()+" |||" + " Удаляем старый луч");
                 }
                 if (priceToInt(GetCurrentBid()) > priceToInt(wVWAP[0])) {
-                    lastWVWAP = DrawRay("weeklyVWAPRay", false, 5, wVWAP[0], 0, wVWAP[0], Color.Green, DashStyle.Dot, 3);
+                    lastWVWAP = DrawRay("weeklyVWAPRay", false, 0, wVWAP[0], -1, wVWAP[0], Color.Green, DashStyle.Dot, 3);
 					Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
                 }
 
                 if (priceToInt(GetCurrentAsk()) < priceToInt(wVWAP[0])) {
-                    lastWVWAP = DrawRay("weeklyVWAPRay", false, 5, wVWAP[0], 0, wVWAP[0], Color.Red, DashStyle.Dot, 3);
+                    lastWVWAP = DrawRay("weeklyVWAPRay", false, 0, wVWAP[0], -1, wVWAP[0], Color.Red, DashStyle.Dot, 3);
 					Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
                 }
             } else {
 				if (lastWVWAP == null) {
 					if (priceToInt(GetCurrentBid()) > priceToInt(wVWAP[0])) {
-						lastWVWAP = DrawRay("weeklyVWAPRay", false, 5, wVWAP[0], 0, wVWAP[0], Color.Green, DashStyle.Dot, 3);
+						lastWVWAP = DrawRay("weeklyVWAPRay", false, 0, wVWAP[0], -1, wVWAP[0], Color.Green, DashStyle.Dot, 3);
 						Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
 					}
 
 					if (priceToInt(GetCurrentAsk()) < priceToInt(wVWAP[0])) {
-						lastWVWAP = DrawRay("weeklyVWAPRay", false, 5, wVWAP[0], 0, wVWAP[0], Color.Red, DashStyle.Dot, 3);
+						lastWVWAP = DrawRay("weeklyVWAPRay", false, 0, wVWAP[0], -1, wVWAP[0], Color.Red, DashStyle.Dot, 3);
 						Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
 					}
 				}	
