@@ -91,6 +91,10 @@ namespace NinjaTrader.Strategy{
         string          BDType                          = "";                                       // тип зеркального уровня, в шорт или в лонг
         string          customTag                       = "";
 
+        // настройки для ретеста недельного VWAP
+        private DataSeries wVWAP;
+        private IRay lastWVWAP;
+
         // описание структуры для хранения уровня
         private struct myLevelType{
             public double   price;                                                                  // цена уровня
@@ -127,6 +131,10 @@ namespace NinjaTrader.Strategy{
             CalculateOnBarClose = false;
             BarsRequired = 25;
             
+			// MaximumBarsLookBack determines how many values the DataSeries will have access to
+    		wVWAP = new DataSeries(this, MaximumBarsLookBack.Infinite);
+            wVWAP = handlarVWAPIndicator().wVWAP;
+
             if (UseUserLevels){
                 // Теперь займемся перехватом событий от мышки если разрешено добавление пользовательских уровней
                 mouseUpH=new MouseEventHandler(this.chart_MouseUp);         
@@ -612,7 +620,7 @@ namespace NinjaTrader.Strategy{
         private void checkPOCLevels(){
             //Print("=================================\nкаждый тик");
             foreach (ChartObject co in ChartControl.ChartObjects){
-                Print(Times[0][0]+" || _Savos_News_For_Strategy().CanTrade[0] = "+_Savos_News_For_Strategy().CanTrade[0].ToString());
+                //Print(Times[0][0]+" || _Savos_News_For_Strategy().CanTrade[0] = "+_Savos_News_For_Strategy().CanTrade[0].ToString());
                 if (co.Tag.StartsWith("VpocRangeLineExt") && (co is IRay)){
                     IRay pocLine = (IRay) co;
                     //Print("найден луч POC c тегом "+pocLine.Tag.ToString());
@@ -704,69 +712,46 @@ namespace NinjaTrader.Strategy{
         }               
         #endregion checkPOCLevels   
         //========================================================================================================= 
- 		
-		//=========================================================================================================     
-        #region checkWeeklyVWAPLevels   
-        /// <summary>
-        /// Проверяем все нарисованные на графике лучи, отбираем те, у которых тег начинается с определенных симвоволов, чтобы найти линию ПОКа от профила Олега
-        /// </summary>
-        private void checkWeeklyVWAPLevels(){
-            //Print("=================================\nкаждый тик");
-            foreach (ChartObject co in ChartControl.ChartObjects){
-                Print(Times[0][0]+" || _Savos_News_For_Strategy().CanTrade[0] = "+_Savos_News_For_Strategy().CanTrade[0].ToString());
-                if (co.Tag.StartsWith("VpocRangeLineExt") && (co is IRay)){
-                    IRay pocLine = (IRay) co;
-                    //Print("найден луч POC c тегом "+pocLine.Tag.ToString());
-                    
-					// сначала определим, это продолжение линии POC выше или ниже текущей цены
-                    if (priceToInt(pocLine.Anchor1Y) > priceToInt(GetCurrentBid())){
-                        // если ПОК выше текущего аска, значит уровень в шорт
-                        int prDelta = priceToInt(pocLine.Anchor1Y) - priceToInt(GetCurrentAsk());
-                        //Print (Instrument.FullName.ToString()+" |||" + "Найден лонговый POC с тегом "+pocLine.Tag.ToString()+" по цене "+pocLine.Anchor1Y + " delta price="+prDelta);
-                        
-                        if (prDelta <= ticksToLimit) {
-                            patternName = "retestPOC";
-                            // Выставляем лимитник в шорт по уровню продолженного POC
-							
-                            
-                            if ((entryOrder != null) && (priceToInt(entryOrder.LimitPrice) != priceToInt(pocLine.Anchor1Y - TickSize))) CancelOrder(entryOrder);
-							
-							if (_Savos_News_For_Strategy().CanTrade[0] == 1) {
-								Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в шорт по уровню продолженного POC"+pocLine.Anchor1Y);
-								openOrder(Lot, "SHORT", pocLine.Anchor1Y - TickSize, patternName, true);
-							} else{
-								Print (Instrument.FullName.ToString()+" |||" + "NEWS!!!");
-							}
-                            //openOrderN(Lot, "SHORT", price, patternName, true);
-                        }
-                    }
-                    
-                    if (priceToInt(pocLine.Anchor1Y) < priceToInt(GetCurrentBid())){
-                        // если ПОК ниже текущего бида, значит уровень в лонг
-                        int prDelta = priceToInt(GetCurrentBid()) - priceToInt(pocLine.Anchor1Y);
-                        //Print (Instrument.FullName.ToString()+" |||" + "Найден лонговый POC с тегом "+pocLine.Tag.ToString()+" по цене "+pocLine.Anchor1Y + " delta price="+prDelta);
-                        
-                        if (prDelta <= ticksToLimit) {
-                            patternName = "retestPOC";
-                            // Выставляем лимитник в лонг по уровню продолженного POC
-                            
-							if ((entryOrder != null) && (priceToInt(entryOrder.LimitPrice) != priceToInt(pocLine.Anchor1Y + TickSize))) CancelOrder(entryOrder);
-                            
-							if (_Savos_News_For_Strategy().CanTrade[0] == 1) {
-								Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в лонг по уровню продолженного POC"+pocLine.Anchor1Y);
-								openOrder(Lot, "LONG", pocLine.Anchor1Y + TickSize, patternName, true);
-							} else {
-								Print (Instrument.FullName.ToString()+" |||" + "NEWS!!!");
-							}
-                        }
-                    }
-                    
-                    
+
+        //=========================================================================================================     
+        #region checkWeeklyVWAP
+        // <summary>
+        // Проверяем каждый бар, если WeeklyVWAP нарисовался на другом уровне, чем прежний, то луч удаляем и рисуем новый по цене недельного VWAP
+        // </summary>
+        
+        private void checkWeeklyVWAP(){
+            //Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в шорт по уровню продолженного POC"+pocLine.Anchor1Y);
+            
+            if (priceToInt(wVWAP[0]) != priceToInt(wVWAP[1])) {
+                if (lastWVWAP != null) {
+                    RemoveDrawObject(lastWVWAP.Tag);
+					Print (Instrument.FullName.ToString()+" |||" + " Удаляем старый луч");
                 }
-            }
+                if (priceToInt(GetCurrentBid()) > priceToInt(wVWAP[0])) {
+                    lastWVWAP = DrawRay("weeklyVWAPRay", false, 5, wVWAP[0], 0, wVWAP[0], Color.Green, DashStyle.Dot, 3);
+					Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
+                }
+
+                if (priceToInt(GetCurrentAsk()) < priceToInt(wVWAP[0])) {
+                    lastWVWAP = DrawRay("weeklyVWAPRay", false, 5, wVWAP[0], 0, wVWAP[0], Color.Red, DashStyle.Dot, 3);
+					Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
+                }
+            } else {
+				if (lastWVWAP == null) {
+					if (priceToInt(GetCurrentBid()) > priceToInt(wVWAP[0])) {
+						lastWVWAP = DrawRay("weeklyVWAPRay", false, 5, wVWAP[0], 0, wVWAP[0], Color.Green, DashStyle.Dot, 3);
+						Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
+					}
+
+					if (priceToInt(GetCurrentAsk()) < priceToInt(wVWAP[0])) {
+						lastWVWAP = DrawRay("weeklyVWAPRay", false, 5, wVWAP[0], 0, wVWAP[0], Color.Red, DashStyle.Dot, 3);
+						Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
+					}
+				}	
+			}
         }               
-        #endregion checkPOCLevels   
-        //========================================================================================================
+        #endregion checkWeeklyVWAP   
+        //=========================================================================================================         
 		
         //=========================================================================================================     
         #region getPriceFromY
@@ -1417,7 +1402,7 @@ namespace NinjaTrader.Strategy{
                 if ((BarsInProgress == 0) && (CurrentBars[0] >= BarsRequired)){
                    	if (_Savos_News_For_Strategy().CanTrade[0] != 1 && entryOrder != null){
 						CancelOrder(entryOrder);
-						Print(Times[0][0]+" NEWS!!! savos news indicator is working!");
+						//Print(Times[0][0]+" NEWS!!! savos news indicator is working!");
 					}
 					
 					if (isTradeTime()) {
@@ -1459,6 +1444,9 @@ namespace NinjaTrader.Strategy{
 
                             // проверяем линии поков
                             checkPOCLevels();
+
+                            // мониторим недельный VWAP    
+                            checkWeeklyVWAP();
 
                             clearLevels();
                         }
