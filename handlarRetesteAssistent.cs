@@ -20,7 +20,7 @@
 #endregion
 
 // This namespace holds all strategies and is required. Do not change it.
-// version v.2.0.0
+// version v.2.0.1
 namespace NinjaTrader.Strategy{
     /// <summary>
     /// Strategy-helper in my trading.
@@ -63,7 +63,6 @@ namespace NinjaTrader.Strategy{
         private double  totalProfit                     = 0;
         private double  dailyProfit                     = 0;
         private double  accountBalance                  = 0;
-        private int     lossTradesLimit                 = 0;                                        // лимит убыточных сделок на день, если 0, то лимита нет
         private double  curPnL                          = 0;                                        // прибыль (убыток) в текущей открытой сделке
         private double  curCommission                   = 0;                                        // комиссия на круг в сделке
         private Color   curPnLColor                     = Color.Green;                              // цвет для фона, где будет показываться текущий PnL зеленый елси мы в плюсе, красный если в минусе
@@ -1135,19 +1134,10 @@ namespace NinjaTrader.Strategy{
         #region isTradeTime
         private bool isTradeTime(){
             if ((ToTime(Time[1]) >= StartTime) && (ToTime(Time[1]) < StopTime)){
-                if ((lossTradesLimit > 0) && (dailyLossCount == lossTradesLimit)) {
-                    DrawTextFixed("rt",     "Лимит убыточных сделок достигнут!",       TextPosition.TopRight,      Color.White,    new Font ("Arial", 12, FontStyle.Regular), Color.White,    Color.DarkGreen,    5);
-                    DrawTextFixed("rt2",    "",     TextPosition.TopRight,      Color.White,    new Font ("Arial", 12, FontStyle.Bold), Color.White,    Color.DarkGreen,    5);
-                
-                    return false;
-                } else {
-                    DrawTextFixed("rt",     "Время торговать!",       TextPosition.TopRight,      Color.White,    new Font ("Arial", 12, FontStyle.Regular), Color.White,    Color.DarkGreen,    5);
-                    DrawTextFixed("rt2",    "",     TextPosition.TopRight,      Color.White,    new Font ("Arial", 12, FontStyle.Bold), Color.White,    Color.DarkGreen,    5);
+                DrawTextFixed("rt",     "Время торговать!",       TextPosition.TopRight,      Color.White,    new Font ("Arial", 12, FontStyle.Regular), Color.White,    Color.DarkGreen,    5);
+                DrawTextFixed("rt2",    "",     TextPosition.TopRight,      Color.White,    new Font ("Arial", 12, FontStyle.Bold), Color.White,    Color.DarkGreen,    5);
                     
-                    return true;
-                }
-                
-                return true;    
+                return true;
             } else{
                 DrawTextFixed("rt", "Время пить чай, отдыхать...",     TextPosition.TopRight,      Color.White,          new Font ("Arial", 12, FontStyle.Regular), Color.White,          Color.DarkRed,      5);
                 return false;
@@ -1576,14 +1566,7 @@ namespace NinjaTrader.Strategy{
         #endregion OnExecution        
         //=========================================================================================================
         
-        #region Properties
-        [Description("Лимит убыточных сделок на день")]
-        [GridCategory("MM settings")]
-        public int LossTradesLimit
-        {
-            get { return lossTradesLimit; }
-            set { lossTradesLimit = value; }
-        }       
+        #region Properties    
 
         [Description("1. Показывать баланс?")]
         [GridCategory("5. Info settings")]
