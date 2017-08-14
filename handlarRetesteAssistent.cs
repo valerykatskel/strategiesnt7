@@ -20,6 +20,7 @@
 #endregion
 
 // This namespace holds all strategies and is required. Do not change it.
+// version v.2.0.0
 namespace NinjaTrader.Strategy{
     /// <summary>
     /// Strategy-helper in my trading.
@@ -129,7 +130,7 @@ namespace NinjaTrader.Strategy{
             // анализировать будем каждый тик, но где надо, будем только по закрытии бара работать, т.к. нинзя
             // на истории при родном расчете на закрытии бара очень не правильно считает
             CalculateOnBarClose = false;
-            BarsRequired = 25;
+            BarsRequired = 6;
             
 			// MaximumBarsLookBack determines how many values the DataSeries will have access to
     		wVWAP = new DataSeries(this, MaximumBarsLookBack.Infinite);
@@ -848,11 +849,6 @@ namespace NinjaTrader.Strategy{
                     // Нажата левая кнопка мышки, но без горячих клавиш. 
                     if (((Control.ModifierKeys & Keys.Control) == 0) && ((Control.ModifierKeys & Keys.Shift) == 0) ){
                         // Работаем с имеющимися уровнями или выходим ни с чем, так как кликнули без Shift
-                        
-                        // в данном случае будем удалять уровень, по началу которого кликнули, если в настройках разрешена работа с пользовательскими уровнями
-                        if (UseUserLevels){
-                            removeLevel(cursorY, cursorX);
-                        }
                     } 
                     if ((Control.ModifierKeys & Keys.Shift) != 0){
                         // если в настройках разрешен поиск пользовательских уровней, тогда добавляем новый пользовательский уровень, т.к. кликнули с зажатым Shift
@@ -864,6 +860,14 @@ namespace NinjaTrader.Strategy{
                             };
                         }
                     }
+				
+					// зажали alt и кликнули, чтобы удалить уровень
+					if ((Control.ModifierKeys & Keys.Alt) != 0){
+						if (UseUserLevels){
+                            removeLevel(cursorY, cursorX);
+                        }
+					
+					}
                 }
             } catch (Exception exc) { /* можно что-то вставить */}
             ChartControl.ChartPanel.Invalidate();
@@ -1391,102 +1395,82 @@ namespace NinjaTrader.Strategy{
         
         //=========================================================================================================
         #region OnBarUpdate
-        // Вызывается при каждом входящем тике
-        // Или только на последнем тике свечи, все зависти от настроек CalculateOnBarClose
         protected override void OnBarUpdate(){
             if (Historical) return;
-			
-            // Если сейчас разрешенное время для торговли
-            
-            try{
-                if ((BarsInProgress == 0) && (CurrentBars[0] >= BarsRequired)){
-                   	if (_Savos_News_For_Strategy().CanTrade[0] != 1 && entryOrder != null){
-						CancelOrder(entryOrder);
-						//Print(Times[0][0]+" NEWS!!! savos news indicator is working!");
-					}
-					
-					if (isTradeTime()) {
+
+            if ((BarsInProgress == 0) && (CurrentBars[0] >= BarsRequired)){
+               	if (_Savos_News_For_Strategy().CanTrade[0] != 1 && entryOrder != null){
+					CancelOrder(entryOrder);
+				}
+				
+				if (isTradeTime()) {
+                    if (FirstTickOfBar) {
+                        // если началась новая сессия, то на первом тике делаем сброс переменных
+                        if (!isNewSession){
+                            //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " |||isTradeTime and first tick and isNewSession="+isNewSession.ToString());}
+                            //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Новый день"+High[1]+" L1="+Low[1]+": ATR(14)[1]="+ATR(14)[1]+"  ATR(14)[2]="+ATR(14)[2]);}
+                            isNewSession = true;
+                            // обнуляем количество убыточных сделок за день
+                            dailyLossCount = 0;
+                            dailyLoss = 0;
+                            
+                            // обнуляем количество прибыльных сделок за день
+                            dailyProfitCount = 0;
+                            dailyProfit = 0;
+                        }
                         
-                        if (FirstTickOfBar) {
-                            // если началась новая сессия, то на первом тике делаем сброс переменных
-                            if (!isNewSession){
-                                //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " |||isTradeTime and first tick and isNewSession="+isNewSession.ToString());}
-                                //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Новый день"+High[1]+" L1="+Low[1]+": ATR(14)[1]="+ATR(14)[1]+"  ATR(14)[2]="+ATR(14)[2]);}
-                                isNewSession = true;
-                                // обнуляем количество убыточных сделок за день
-                                dailyLossCount = 0;
-                                dailyLoss = 0;
-                                
-                                // обнуляем количество прибыльных сделок за день
-                                dailyProfitCount = 0;
-                                dailyProfit = 0;
-                            }
-                            
-                            //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Первый тик нового бара H1="+High[1]+" L1="+Low[1]+": ATR(14)[1]="+ATR(14)[1]+"  ATR(14)[2]="+ATR(14)[2]);}
-                            /*if(UseMirrorLevels){
-                                checkBDBar();
-                            }*/
-                            
-                            
-                        } else {
-                            //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " |||isTradeTime and each tick and isNewSession="+isNewSession.ToString());}
-                            if (shortLevels.Count > 0){
-                                if ((UseMirrorLevels && AllowTradeMirrorLevels) || (UseUserLevels && AllowTradeUserLevels)){
-                                    setLimitOrder("SHORT");
-                                }
-                            }
-                            
-                            if (longLevels.Count > 0){
-                                if ((UseMirrorLevels && AllowTradeMirrorLevels) || (UseUserLevels && AllowTradeUserLevels)){
-                                    setLimitOrder("LONG");
-                                }
-                            }
-
-                            // проверяем линии поков
-                            checkPOCLevels();
-
-                            // мониторим недельный VWAP    
-                            checkWeeklyVWAP();
-
-                            clearLevels();
-                        }
+                        //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Первый тик нового бара H1="+High[1]+" L1="+Low[1]+": ATR(14)[1]="+ATR(14)[1]+"  ATR(14)[2]="+ATR(14)[2]);}
+                        /*if(UseMirrorLevels){
+                            checkBDBar();
+                        }*/
+                        
+                        
                     } else {
-                        // Искать уровни мы будем даже в неторговое время, а вот уже торговать по уровнят только в отведенное для торгов время
-                        if (FirstTickOfBar) {
-                            //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " |||is__NOT_TradeTime and first tick and isNewSession="+isNewSession.ToString());}
-                            // UseMirrorLevels
-                        } else {
-                            //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " |||is__NOT_TradeTime and each tick and isNewSession="+isNewSession.ToString());}
-                            if (isNewSession) {
-                                isNewSession = false;
-                                // Если не торговое время, тогда удаляем все лимитники
-                                if (UseDebug) {
-                                    Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Время не торговое уже");
-                                }
-                                if (entryOrder != null)
-                                
-                                CancelOrder(entryOrder);
-                                if (UseDebug) {
-                                    Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Отменяем ордер лимитный или закрываем рыночный");
-                                }
+                        //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " |||isTradeTime and each tick and isNewSession="+isNewSession.ToString());}
+                        if (shortLevels.Count > 0){
+                            if ((UseMirrorLevels && AllowTradeMirrorLevels) || (UseUserLevels && AllowTradeUserLevels)){
+                                setLimitOrder("SHORT");
                             }
-                            //clearLevels();
-                            // тут пишем код, который будет выполняться при поступлении каждого нового тика для основного графика
-                            
-                            // показываем информацию о сделках (количество, прибыль-убытки, уровни)
-                            //showTradesInformation();
-                            
-                            // показываем информацию о текущем PnL, если мы в рынке или об установленном лимитнике
-                            //showCurrentPnLInformation();
                         }
+                        
+                        if (longLevels.Count > 0){
+                            if ((UseMirrorLevels && AllowTradeMirrorLevels) || (UseUserLevels && AllowTradeUserLevels)){
+                                setLimitOrder("LONG");
+                            }
+                        }
+
+                        // проверяем линии поков
+                        checkPOCLevels();
+
+                        // мониторим недельный VWAP    
+                        checkWeeklyVWAP();
+
+                        clearLevels();
                     }
                 } else {
-                    if (FirstTickOfBar) {
-                        if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Первый тик нового бара но пока баров меньше, чем BarsRequired="+BarsRequired+"  CurrentBars[0]="+CurrentBars[0]);}
-                    }   
+                    // Искать уровни мы будем даже в неторговое время, а вот уже торговать по уровнят только в отведенное для торгов время
+                    if (isNewSession) {
+                        isNewSession = false;
+                        // Если не торговое время, тогда удаляем все лимитники
+                        if (UseDebug) {
+                            Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Время не торговое уже");
+                        }
+                        if (entryOrder != null)
+                        
+                        CancelOrder(entryOrder);
+                        if (UseDebug) {
+                            Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Отменяем ордер лимитный или закрываем рыночный");
+                        }
+                    }
+                    //clearLevels();
+                    // тут пишем код, который будет выполняться при поступлении каждого нового тика для основного графика
+                    
+                    // показываем информацию о сделках (количество, прибыль-убытки, уровни)
+                    //showTradesInformation();
+                    
+                    // показываем информацию о текущем PnL, если мы в рынке или об установленном лимитнике
+                    //showCurrentPnLInformation();
                 }
-            } catch (Exception e){
-                Print ("OnBarUpdate:: "+ e.ToString());
             }
         }   
         #endregion OnBarUpdate
