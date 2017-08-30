@@ -20,7 +20,7 @@
 #endregion
 
 // This namespace holds all strategies and is required. Do not change it.
-// version v.2.0.1
+// version v.2.0.2
 namespace NinjaTrader.Strategy{
     /// <summary>
     /// Strategy-helper in my trading.
@@ -131,8 +131,8 @@ namespace NinjaTrader.Strategy{
             CalculateOnBarClose = false;
             BarsRequired = 6;
             
-			// MaximumBarsLookBack determines how many values the DataSeries will have access to
-    		wVWAP = new DataSeries(this, MaximumBarsLookBack.Infinite);
+            // MaximumBarsLookBack determines how many values the DataSeries will have access to
+            wVWAP = new DataSeries(this, MaximumBarsLookBack.Infinite);
             wVWAP = handlarVWAPIndicator().wVWAP;
 
             if (UseUserLevels){
@@ -401,15 +401,15 @@ namespace NinjaTrader.Strategy{
             // Удаляем из массива LONG все значения, которые больше или равны последней цене Bid
             
             if (longLevels.Count > 0){
-				
+                
                 try{if (longLevels.Count == 1){
-                	//Print(Instrument.FullName.ToString()+" |||" + Time[0] + " ||| " + "longLevels.Count = 1");
-					if (priceToInt(longLevels[0].price) >= priceToInt(GetCurrentBid())) {
+                    //Print(Instrument.FullName.ToString()+" |||" + Time[0] + " ||| " + "longLevels.Count = 1");
+                    if (priceToInt(longLevels[0].price) >= priceToInt(GetCurrentBid())) {
                         key = 0;
                         lvl = longLevels[0];
                     }
                 } else {
-					//Print(Instrument.FullName.ToString()+" |||" + Time[0] + " ||| " + "longLevels.Count = " + longLevels.Count);
+                    //Print(Instrument.FullName.ToString()+" |||" + Time[0] + " ||| " + "longLevels.Count = " + longLevels.Count);
                     key = longLevels.FirstOrDefault(x => priceToInt(x.Value.price) >= priceToInt(GetCurrentBid())).Key; // КРУТО!!! фактически тот же поиск ключа по значению но без конструкции foreach{}
                     if (key > 0){
                         lvl = longLevels[key];
@@ -436,14 +436,14 @@ namespace NinjaTrader.Strategy{
             
             // Удаляем из массива SHORT все значения, которые меньше или равны последней цене Ask
             if (shortLevels.Count > 0){
-				try{if (shortLevels.Count == 1){
+                try{if (shortLevels.Count == 1){
                     //Print(Instrument.FullName.ToString()+" |||" + Time[0] + " ||| " + "shortLevels.Count = 1");
-					if (priceToInt(shortLevels[0].price) <= priceToInt(GetCurrentAsk())) {
+                    if (priceToInt(shortLevels[0].price) <= priceToInt(GetCurrentAsk())) {
                         key = 0;
                         lvl = shortLevels[0];
                     }
                 } else {
-					//Print(Instrument.FullName.ToString()+" |||" + Time[0] + " ||| " + "shortLevels.Count = " + shortLevels.Count);
+                    //Print(Instrument.FullName.ToString()+" |||" + Time[0] + " ||| " + "shortLevels.Count = " + shortLevels.Count);
                     key = shortLevels.FirstOrDefault(x => x.Value.price <= GetCurrentAsk()).Key;    // КРУТО!!! фактически тот же поиск ключа по значению но без конструкции foreach{}
                     if (key > 0){
                         lvl = shortLevels[key];
@@ -625,7 +625,7 @@ namespace NinjaTrader.Strategy{
                     IRay pocLine = (IRay) co;
                     //Print("найден луч POC c тегом "+pocLine.Tag.ToString());
                     
-					// сначала определим, это продолжение линии POC выше или ниже текущей цены
+                    // сначала определим, это продолжение линии POC выше или ниже текущей цены
                     if (priceToInt(pocLine.Anchor1Y) > priceToInt(GetCurrentBid())){
                         // если ПОК выше текущего аска, значит уровень в шорт
                         int prDelta = priceToInt(pocLine.Anchor1Y) - priceToInt(GetCurrentAsk());
@@ -634,16 +634,18 @@ namespace NinjaTrader.Strategy{
                         if (prDelta <= ticksToLimit) {
                             patternName = "retestPOC";
                             // Выставляем лимитник в шорт по уровню продолженного POC
-							
+                            
                             
                             if ((entryOrder != null) && (priceToInt(entryOrder.LimitPrice) != priceToInt(pocLine.Anchor1Y - TickSize))) CancelOrder(entryOrder);
-							
-							if (_Savos_News_For_Strategy().CanTrade[0] == 1) {
-								Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в шорт по уровню продолженного POC"+pocLine.Anchor1Y);
-								openOrder(Lot, "SHORT", pocLine.Anchor1Y - TickSize, patternName, true);
-							} else{
-								Print (Instrument.FullName.ToString()+" |||" + "NEWS!!!");
-							}
+                            
+                            if (_Savos_News_For_Strategy().CanTrade[0] == 1) {
+                                Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в шорт по уровню продолженного POC"+pocLine.Anchor1Y);
+                                openOrder(Lot, "SHORT", pocLine.Anchor1Y - TickSize, patternName, true);
+                            } else{
+                               	if (UseDebug) {
+									Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + " Новости!!! Новые ордера не выставляем!");
+								}
+                            }
                             //openOrderN(Lot, "SHORT", price, patternName, true);
                         }
                     }
@@ -657,14 +659,16 @@ namespace NinjaTrader.Strategy{
                             patternName = "retestPOC";
                             // Выставляем лимитник в лонг по уровню продолженного POC
                             
-							if ((entryOrder != null) && (priceToInt(entryOrder.LimitPrice) != priceToInt(pocLine.Anchor1Y + TickSize))) CancelOrder(entryOrder);
+                            if ((entryOrder != null) && (priceToInt(entryOrder.LimitPrice) != priceToInt(pocLine.Anchor1Y + TickSize))) CancelOrder(entryOrder);
                             
-							if (_Savos_News_For_Strategy().CanTrade[0] == 1) {
-								Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в лонг по уровню продолженного POC"+pocLine.Anchor1Y);
-								openOrder(Lot, "LONG", pocLine.Anchor1Y + TickSize, patternName, true);
-							} else {
-								Print (Instrument.FullName.ToString()+" |||" + "NEWS!!!");
-							}
+                            if (_Savos_News_For_Strategy().CanTrade[0] == 1) {
+                                Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в лонг по уровню продолженного POC"+pocLine.Anchor1Y);
+                                openOrder(Lot, "LONG", pocLine.Anchor1Y + TickSize, patternName, true);
+                            } else {
+                                if (UseDebug) {
+									Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + " Новости!!! Новые ордера не выставляем!");
+								}
+                            }
                         }
                     }
                     
@@ -725,34 +729,34 @@ namespace NinjaTrader.Strategy{
             if (priceToInt(wVWAP[0]) != priceToInt(wVWAP[1])) {
                 if (lastWVWAP != null) {
                     RemoveDrawObject(lastWVWAP.Tag);
-					Print (Instrument.FullName.ToString()+" |||" + " Удаляем старый луч");
+                    Print (Instrument.FullName.ToString()+" |||" + " Удаляем старый луч");
                 }
                 if (priceToInt(GetCurrentBid()) > priceToInt(wVWAP[0])) {
                     lastWVWAP = DrawRay("weeklyVWAPRay", false, 0, wVWAP[0], -1, wVWAP[0], Color.Green, DashStyle.Dot, 3);
-					Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
+                    Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
                 }
 
                 if (priceToInt(GetCurrentAsk()) < priceToInt(wVWAP[0])) {
                     lastWVWAP = DrawRay("weeklyVWAPRay", false, 0, wVWAP[0], -1, wVWAP[0], Color.Red, DashStyle.Dot, 3);
-					Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
+                    Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
                 }
             } else {
-				if (lastWVWAP == null) {
-					if (priceToInt(GetCurrentBid()) > priceToInt(wVWAP[0])) {
-						lastWVWAP = DrawRay("weeklyVWAPRay", false, 0, wVWAP[0], -1, wVWAP[0], Color.Green, DashStyle.Dot, 3);
-						Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
-					}
+                if (lastWVWAP == null) {
+                    if (priceToInt(GetCurrentBid()) > priceToInt(wVWAP[0])) {
+                        lastWVWAP = DrawRay("weeklyVWAPRay", false, 0, wVWAP[0], -1, wVWAP[0], Color.Green, DashStyle.Dot, 3);
+                        Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
+                    }
 
-					if (priceToInt(GetCurrentAsk()) < priceToInt(wVWAP[0])) {
-						lastWVWAP = DrawRay("weeklyVWAPRay", false, 0, wVWAP[0], -1, wVWAP[0], Color.Red, DashStyle.Dot, 3);
-						Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
-					}
-				}	
-			}
+                    if (priceToInt(GetCurrentAsk()) < priceToInt(wVWAP[0])) {
+                        lastWVWAP = DrawRay("weeklyVWAPRay", false, 0, wVWAP[0], -1, wVWAP[0], Color.Red, DashStyle.Dot, 3);
+                        Print (Instrument.FullName.ToString()+" |||" + " Рисуем новый луч");
+                    }
+                }   
+            }
         }               
         #endregion checkWeeklyVWAP   
         //=========================================================================================================         
-		
+        
         //=========================================================================================================     
         #region getPriceFromY
         private double getPriceFromY(int y){
@@ -859,14 +863,14 @@ namespace NinjaTrader.Strategy{
                             };
                         }
                     }
-				
-					// зажали alt и кликнули, чтобы удалить уровень
-					if ((Control.ModifierKeys & Keys.Alt) != 0){
-						if (UseUserLevels){
+                
+                    // зажали alt и кликнули, чтобы удалить уровень
+                    if ((Control.ModifierKeys & Keys.Alt) != 0){
+                        if (UseUserLevels){
                             removeLevel(cursorY, cursorX);
                         }
-					
-					}
+                    
+                    }
                 }
             } catch (Exception exc) { /* можно что-то вставить */}
             ChartControl.ChartPanel.Invalidate();
@@ -1172,13 +1176,13 @@ namespace NinjaTrader.Strategy{
                         /*if (killLimitOrder){
                             if (UseDebug) {
                                 //Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем BUY STOP ("+longLevels.Aggregate((l, r) => l.Value.price > r.Value.price ? l : r).Value.price+") killLimitOrder=true");
-								Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем BUY STOP ("+entryPrice+") killLimitOrder=true");
+                                Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем BUY STOP ("+entryPrice+") killLimitOrder=true");
                             }
                             entryOrder = EnterLongStop(lot, entryPrice, orderComment);
                         } else {
                             if (UseDebug) {
                                 //Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем BUY STOP ("+longLevels.Aggregate((l, r) => l.Value.price > r.Value.price ? l : r).Value.price+") killLimitOrder=false");
-								Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем BUY STOP ("+entryPrice+") killLimitOrder=false");
+                                Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем BUY STOP ("+entryPrice+") killLimitOrder=false");
                             }
                             entryOrder = EnterLongStop(0, true, lot, entryPrice, orderComment);
                         }*/
@@ -1205,13 +1209,13 @@ namespace NinjaTrader.Strategy{
                         if (killLimitOrder){
                             if (UseDebug) {
                                 //Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем SELL LIMIT ("+shortLevels.Aggregate((l, r) => l.Value.price < r.Value.price ? l : r).Value.price+") killLimitOrder=true");
-								Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем SELL LIMIT ("+entryPrice+") killLimitOrder=true");
+                                Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем SELL LIMIT ("+entryPrice+") killLimitOrder=true");
                             }
                             entryOrder = EnterShortStop(lot, entryPrice, orderComment);
                         } else {
                             if (UseDebug) {
                                 //Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем SELL LIMIT ("+shortLevels.Aggregate((l, r) => l.Value.price < r.Value.price ? l : r).Value.price+") killLimitOrder=false");
-								Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем SELL LIMIT ("+entryPrice+") killLimitOrder=false");
+                                Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + "Выставляем SELL LIMIT ("+entryPrice+") killLimitOrder=false");
                             }
                             entryOrder = EnterShortStop(0, true, lot, entryPrice, orderComment);
                         }
@@ -1389,11 +1393,14 @@ namespace NinjaTrader.Strategy{
             if (Historical) return;
 
             if ((BarsInProgress == 0) && (CurrentBars[0] >= BarsRequired)){
-               	if (_Savos_News_For_Strategy().CanTrade[0] != 1 && entryOrder != null){
-					CancelOrder(entryOrder);
-				}
-				
-				if (isTradeTime()) {
+                if (_Savos_News_For_Strategy().CanTrade[0] != 1 && entryOrder != null){
+					if (UseDebug) {
+                    	Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + " Новости, снимаем ордера, если есть. Новые не выставляем!");
+                   	}
+                    CancelOrder(entryOrder);
+                }
+                
+                if (isTradeTime()) {
                     if (FirstTickOfBar) {
                         // если началась новая сессия, то на первом тике делаем сброс переменных
                         if (!isNewSession){
@@ -1433,7 +1440,7 @@ namespace NinjaTrader.Strategy{
                         checkPOCLevels();
 
                         // мониторим недельный VWAP    
-                        checkWeeklyVWAP();
+                        //checkWeeklyVWAP();
 
                         clearLevels();
                     }
