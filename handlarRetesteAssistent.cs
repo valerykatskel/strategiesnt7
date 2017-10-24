@@ -20,7 +20,7 @@
 #endregion
 
 // This namespace holds all strategies and is required. Do not change it.
-// version v.2.0.2
+// version v.2.0.3
 namespace NinjaTrader.Strategy{
     /// <summary>
     /// Strategy-helper in my trading.
@@ -621,7 +621,13 @@ namespace NinjaTrader.Strategy{
             //Print("=================================\nкаждый тик");
             foreach (ChartObject co in ChartControl.ChartObjects){
                 //Print(Times[0][0]+" || _Savos_News_For_Strategy().CanTrade[0] = "+_Savos_News_For_Strategy().CanTrade[0].ToString());
-                if (co.Tag.StartsWith("VpocRangeLineExt") && (co is IRay)){
+                if (
+						(
+							co.Tag.StartsWith("VpocRangeLineExt")
+							|| co.Tag.StartsWith("VPOC_Ray")
+						) 
+						&& (co is IRay)
+					){
                     IRay pocLine = (IRay) co;
                     //Print("найден луч POC c тегом "+pocLine.Tag.ToString());
                     
@@ -642,9 +648,9 @@ namespace NinjaTrader.Strategy{
                                 Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в шорт по уровню продолженного POC"+pocLine.Anchor1Y);
                                 openOrder(Lot, "SHORT", pocLine.Anchor1Y - TickSize, patternName, true);
                             } else{
-                               	if (UseDebug) {
-									Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + " Новости!!! Новые ордера не выставляем!");
-								}
+                                if (UseDebug) {
+                                    Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + " Новости!!! Новые ордера не выставляем!");
+                                }
                             }
                             //openOrderN(Lot, "SHORT", price, patternName, true);
                         }
@@ -666,8 +672,8 @@ namespace NinjaTrader.Strategy{
                                 openOrder(Lot, "LONG", pocLine.Anchor1Y + TickSize, patternName, true);
                             } else {
                                 if (UseDebug) {
-									Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + " Новости!!! Новые ордера не выставляем!");
-								}
+                                    Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + " Новости!!! Новые ордера не выставляем!");
+                                }
                             }
                         }
                     }
@@ -1394,9 +1400,9 @@ namespace NinjaTrader.Strategy{
 
             if ((BarsInProgress == 0) && (CurrentBars[0] >= BarsRequired)){
                 if (_Savos_News_For_Strategy().CanTrade[0] != 1 && entryOrder != null){
-					if (UseDebug) {
-                    	Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + " Новости, снимаем ордера, если есть. Новые не выставляем!");
-                   	}
+                    if (UseDebug) {
+                        Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + " Новости, снимаем ордера, если есть. Новые не выставляем!");
+                    }
                     CancelOrder(entryOrder);
                 }
                 
