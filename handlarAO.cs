@@ -22,7 +22,7 @@ namespace NinjaTrader.Strategy
     public class AO : Strategy
     {
         #region Variables
-			private string version = "0.0.4";
+			private string version = "0.0.5";
 			private int take = 1; // Default setting for Take
 			private int stop = 10; // Default setting for Stop
         #endregion
@@ -65,8 +65,8 @@ namespace NinjaTrader.Strategy
             if (
 				(Instrument.ToString().StartsWith("ES"))
 				|| (Instrument.ToString().StartsWith("GC"))
-				//|| (Instrument.ToString().StartsWith("PL"))
-				//|| (Instrument.ToString().StartsWith("6C"))
+				|| (Instrument.ToString().StartsWith("NQ"))
+				|| (Instrument.ToString().StartsWith("TF"))
 			) {
                 return 30;
             }
