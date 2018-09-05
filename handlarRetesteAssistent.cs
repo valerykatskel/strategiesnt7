@@ -20,7 +20,7 @@
 #endregion
 
 // This namespace holds all strategies and is required. Do not change it.
-// version v.2.0.3
+// version v.2.1.0.0
 namespace NinjaTrader.Strategy{
     /// <summary>
     /// Strategy-helper in my trading.
@@ -619,6 +619,11 @@ namespace NinjaTrader.Strategy{
         /// </summary>
         private void checkPOCLevels(){
             //Print("=================================\nкаждый тик");
+			int sLevelCount = 0;
+			int lLevelCount = 0;
+			double nearestShortLevelPrice = 100000;
+			double nearestLongLevelPrice = 0;
+			string di = "";
             foreach (ChartObject co in ChartControl.ChartObjects){
                 //Print(Times[0][0]+" || _Savos_News_For_Strategy().CanTrade[0] = "+_Savos_News_For_Strategy().CanTrade[0].ToString());
                 if (
@@ -628,37 +633,43 @@ namespace NinjaTrader.Strategy{
 						) 
 						&& (co is IRay)
 					){
-                    IRay pocLine = (IRay) co;
+					IRay pocLine = (IRay) co;
                     //Print("найден луч POC c тегом "+pocLine.Tag.ToString());
                     
                     // сначала определим, это продолжение линии POC выше или ниже текущей цены
-                    if (priceToInt(pocLine.Anchor1Y) > priceToInt(GetCurrentBid())){
-                        // если ПОК выше текущего аска, значит уровень в шорт
-                        int prDelta = priceToInt(pocLine.Anchor1Y) - priceToInt(GetCurrentAsk());
+                    if (priceToInt(pocLine.Anchor1Y) > priceToInt(Close[0])){
+                        sLevelCount += 1;
+						if (priceToInt(pocLine.Anchor1Y) < priceToInt(nearestShortLevelPrice)) {
+							nearestShortLevelPrice = pocLine.Anchor1Y;
+						}
+						
+						
+						// если ПОК выше текущей цены, значит уровень в шорт
+                        int prDelta = priceToInt(pocLine.Anchor1Y) - priceToInt(Close[0]);
                         //Print (Instrument.FullName.ToString()+" |||" + "Найден лонговый POC с тегом "+pocLine.Tag.ToString()+" по цене "+pocLine.Anchor1Y + " delta price="+prDelta);
                         
                         if (prDelta <= ticksToLimit) {
                             patternName = "retestPOC";
-                            // Выставляем лимитник в шорт по уровню продолженного POC
                             
-                            
+							// Выставляем лимитник в шорт по уровню продолженного POC
                             if ((entryOrder != null) && (priceToInt(entryOrder.LimitPrice) != priceToInt(pocLine.Anchor1Y - TickSize))) CancelOrder(entryOrder);
                             
                             if (_Savos_News_For_Strategy().CanTrade[0] == 1) {
                                 Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в шорт по уровню продолженного POC"+pocLine.Anchor1Y);
                                 openOrder(Lot, "SHORT", pocLine.Anchor1Y - TickSize, patternName, true);
-                            } else{
-                                if (UseDebug) {
-                                    Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + " Новости!!! Новые ордера не выставляем!");
-                                }
                             }
                             //openOrderN(Lot, "SHORT", price, patternName, true);
                         }
                     }
                     
-                    if (priceToInt(pocLine.Anchor1Y) < priceToInt(GetCurrentBid())){
-                        // если ПОК ниже текущего бида, значит уровень в лонг
-                        int prDelta = priceToInt(GetCurrentBid()) - priceToInt(pocLine.Anchor1Y);
+                    if (priceToInt(pocLine.Anchor1Y) < priceToInt(Close[0])){
+                        lLevelCount += 1;
+						if (priceToInt(pocLine.Anchor1Y) > priceToInt(nearestLongLevelPrice)) {
+							nearestLongLevelPrice = pocLine.Anchor1Y;
+						}
+						
+						// если ПОК ниже текущей цены, значит уровень в лонг
+                        int prDelta = priceToInt(Close[0]) - priceToInt(pocLine.Anchor1Y);
                         //Print (Instrument.FullName.ToString()+" |||" + "Найден лонговый POC с тегом "+pocLine.Tag.ToString()+" по цене "+pocLine.Anchor1Y + " delta price="+prDelta);
                         
                         if (prDelta <= ticksToLimit) {
@@ -682,43 +693,18 @@ namespace NinjaTrader.Strategy{
                 }
             }
             
-            /*foreach (IDrawObject draw in DrawObjects){
-                Print ("Найден рисованный объект "+draw.ToString());
-                // Ищем лучи которые являются продолжением линии ПОК
-                if (draw.Tag.StartsWith("VpocRangeLineExt") && (draw is IRay)){
-                    IRay globalRay = (IRay) draw;
-                    Print ("Найден луч по цене "+globalRay.Anchor1Y);
-                    /*if (globalRay.Tag.StartsWith(LongLevelUserTag) && (globalRay.Anchor1Y != 0)) {
-                        if (priceToInt(globalRay.Anchor1Y) < priceToInt(GetCurrentBid())){
-                            patternName = "userLevel";
-                            if (UseDebug) {
-                                Print(Instrument.FullName.ToString()+" |||" + Time[0] + " ||| " + "Найден пользовательский уровень лонг по цене "+globalRay.Anchor2Y);
-                            }
-                            addLevel(globalRay.Anchor2Y, longLevels, "long");
-                            longRay = DrawRay("longRay"+globalRay.Anchor2Y, globalRay.Anchor1BarsAgo, globalRay.Anchor2Y, globalRay.Anchor2BarsAgo, globalRay.Anchor2Y, Color.Green);
-                            addPOCRayToArray(globalRay.Anchor2Y, longRay, longNakedLevels);
-                            globalRay.Anchor1Y = 0;
-                            globalRay.Anchor2Y = 0;
-                            //errorLongPrice = -1;
-                        }
-                    }
-                    
-                    if (draw.Tag.StartsWith(ShortLevelUserTag) && (globalRay.Anchor1Y != 0)) {
-                        if (priceToInt(globalRay.Anchor1Y) > priceToInt(GetCurrentAsk())){
-                            patternName = "userLevel";
-                            if (UseDebug) {
-                                Print(Instrument.FullName.ToString()+" |||" + Time[0] + " ||| " + "Найден пользовательский уровень шорт по цене "+globalRay.Anchor2Y);
-                            }
-                            addLevel(globalRay.Anchor2Y, shortLevels, "short");
-                            shortRay = DrawRay("shortRay"+globalRay.Anchor2Y, globalRay.Anchor1BarsAgo, globalRay.Anchor2Y, globalRay.Anchor2BarsAgo, globalRay.Anchor2Y, Color.Red);                        
-                            addPOCRayToArray(globalRay.Anchor2Y, shortRay, shortNakedLevels);
-                            globalRay.Anchor1Y = 0;
-                            globalRay.Anchor2Y = 0;
-                            //errorShortPrice = -1;
-                        }
-                    }                }
-
-            }*/
+			if (sLevelCount > 0){
+                di += String.Format("Ближайший POC SHORT : {0} ({1})\n", nearestShortLevelPrice, sLevelCount);
+            } else {
+                di += "Ближайший POC SHORT: нет"+"\n";
+            }
+            
+            if (lLevelCount > 0){
+                di += String.Format("Ближайший POC LONG: {0} ({1})\n", nearestLongLevelPrice, lLevelCount);  
+            } else {
+                di += "Ближайший POC LONG: нет"+"\n";
+            }
+            DrawTextFixed("dibl", di, TextPosition.BottomLeft, Color.White, new Font ("Arial", 10, FontStyle.Regular), Color.White, Color.DarkBlue, 5);			
         }               
         #endregion checkPOCLevels   
         //========================================================================================================= 
@@ -1400,14 +1386,14 @@ namespace NinjaTrader.Strategy{
 
             if ((BarsInProgress == 0) && (CurrentBars[0] >= BarsRequired)){
                 if (_Savos_News_For_Strategy().CanTrade[0] != 1 && entryOrder != null){
-                    if (UseDebug) {
+                    /*if (UseDebug) {
                         Print(Instrument.FullName.ToString()+" |||" + Time[1] + " ||| " + " Новости, снимаем ордера, если есть. Новые не выставляем!");
-                    }
+                    }*/
                     CancelOrder(entryOrder);
                 }
                 
                 if (isTradeTime()) {
-                    if (FirstTickOfBar) {
+					if (FirstTickOfBar) {
                         // если началась новая сессия, то на первом тике делаем сброс переменных
                         if (!isNewSession){
                             //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " |||isTradeTime and first tick and isNewSession="+isNewSession.ToString());}
@@ -1428,28 +1414,29 @@ namespace NinjaTrader.Strategy{
                         }*/
                         
                         
-                    } else {
-                        //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " |||isTradeTime and each tick and isNewSession="+isNewSession.ToString());}
-                        if (shortLevels.Count > 0){
-                            if ((UseMirrorLevels && AllowTradeMirrorLevels) || (UseUserLevels && AllowTradeUserLevels)){
-                                setLimitOrder("SHORT");
-                            }
+                    } 
+					
+                    //if (UseDebug){Print(Instrument.FullName.ToString()+" |||" + Time[1] + " |||isTradeTime and each tick and isNewSession="+isNewSession.ToString());}
+                    if (shortLevels.Count > 0){
+                        if ((UseMirrorLevels && AllowTradeMirrorLevels) || (UseUserLevels && AllowTradeUserLevels)){
+                            setLimitOrder("SHORT");
                         }
-                        
-                        if (longLevels.Count > 0){
-                            if ((UseMirrorLevels && AllowTradeMirrorLevels) || (UseUserLevels && AllowTradeUserLevels)){
-                                setLimitOrder("LONG");
-                            }
-                        }
-
-                        // проверяем линии поков
-                        checkPOCLevels();
-
-                        // мониторим недельный VWAP    
-                        //checkWeeklyVWAP();
-
-                        clearLevels();
                     }
+                    
+                    if (longLevels.Count > 0){
+                        if ((UseMirrorLevels && AllowTradeMirrorLevels) || (UseUserLevels && AllowTradeUserLevels)){
+                            setLimitOrder("LONG");
+                        }
+                    }
+
+                    // проверяем линии поков
+                    checkPOCLevels();
+
+                    // мониторим недельный VWAP    
+                    //checkWeeklyVWAP();
+
+                    clearLevels();
+                    
                 } else {
                     // Искать уровни мы будем даже в неторговое время, а вот уже торговать по уровнят только в отведенное для торгов время
                     if (isNewSession) {
