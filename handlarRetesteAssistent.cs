@@ -20,7 +20,7 @@
 #endregion
 
 // This namespace holds all strategies and is required. Do not change it.
-// version v.2.2.0.1
+// version v.2.2.0.3
 namespace NinjaTrader.Strategy{
     /// <summary>
     /// Strategy-helper in my trading.
@@ -626,6 +626,8 @@ namespace NinjaTrader.Strategy{
 			double nearestLongLevelPrice = 0;
 			string di = "";
 			if (_Savos_News_For_Strategy().CanTrade[0] == 1) {
+				
+				#region find POC levels
 				foreach (ChartObject co in ChartControl.ChartObjects){
 					//Print(Times[0][0]+" || _Savos_News_For_Strategy().CanTrade[0] = "+_Savos_News_For_Strategy().CanTrade[0].ToString());
 					if (
@@ -638,6 +640,7 @@ namespace NinjaTrader.Strategy{
 						IRay pocLine = (IRay) co;
 						//Print("найден луч POC c тегом "+pocLine.Tag.ToString());
 						
+						#region calc short levels
 						// сначала определим, это продолжение линии POC выше или ниже текущей цены
 						if (priceToInt(pocLine.Anchor1Y) > priceToInt(Close[0])){
 							sLevelCount += 1;
@@ -664,7 +667,9 @@ namespace NinjaTrader.Strategy{
 								}
 							}
 						}
+						#endregion
 						
+						#region calc long levels
 						if (priceToInt(pocLine.Anchor1Y) < priceToInt(Close[0])){
 							lLevelCount += 1;
 							if (priceToInt(pocLine.Anchor1Y) > priceToInt(nearestLongLevelPrice)) {
@@ -693,105 +698,122 @@ namespace NinjaTrader.Strategy{
 								}
 							}
 						}
-						
-						
+						#endregion
 					}
 				}
+				#endregion
+				
 				if (alwaysActiveOneLimitOrder) {
 					// Дальше нужно прочекать, сначала для ШОРТОВ, после для ЛОНГОВ
 					
-					// Поскольку всегда в моменте времени один лимитник будет выставлен, то
 					if (entryOrder != null) {
-						
-						// Проверим, если это ситуация, когда есть только уровень в лонг, тогда делаем так
-						if ((sLevelCount == 0) && (lLevelCount > 0)) {
-							// Удалим лимитку, если она стоит по невыгодной цене, т.е. в лонг, но ниже ,чем ближайший уровень в лонг
-							if (entryOrder.LimitPrice < nearestLongLevelPrice) {
-								CancelOrder(entryOrder);
-							}
-							// Удалим лимитку, если это лимитка в шорт
-							if (entryOrder.Name == "Sell short") {
-								CancelOrder(entryOrder);
-							}
-							
-							Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в лонг по ближайшему уровню");
-							openOrder(Lot, "LONG", nearestLongLevelPrice, patternName, true);
-						
-						}
-						
-						// Проверим, если это ситуация, когда есть только уровень в шорт, тогда делаем так
-						if ((sLevelCount > 0) && (lLevelCount == 0)) {
-							// Удалим лимитку, если она стоит по невыгодной цене, т.е. в шорт, но выше ,чем ближайший уровень в шорт
-							if (entryOrder.LimitPrice > nearestShortLevelPrice) {
-								CancelOrder(entryOrder);
-							}
-							// Удалим лимитку, если это лимитка в лонг
-							if (entryOrder.Name == "Buy") {
-								CancelOrder(entryOrder);
-							}
-							
-							Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в шорт по ближайшему уровню");
-							openOrder(Lot, "SHORT", nearestShortLevelPrice, patternName, true);
-						}
-						
-						// Проверим, если это ситуация, когда есть И уровень в шорт И уровень лонг, тогда делаем так
-						if ((sLevelCount > 0) && (lLevelCount > 0)) {
-							int distanceBetweenNearestLevels = priceToInt(nearestShortLevelPrice) - priceToInt(nearestLongLevelPrice);
-							double deltaPrice = TickSize*(distanceBetweenNearestLevels/2);
-							
-							// Нужно понять, выше середины расстояние между уровнями или выше мы находимся сейчас и какой уровень выставлять.
-							
-							string pos = "";
-							// Если мы находимся ниже, чем середина расстояния между ближайшим уровнем в шорт и ближайшим уровнем в лонг, то нужно ставить лимитник в лонг
-							if (Close[0] < (nearestShortLevelPrice - deltaPrice)) pos = "long";
-							// Если мы находимся выше, чем середина расстояния между ближайшим уровнем в шорт и ближайшим уровнем в лонг, то нужно ставить лимитрик в шорт
-							if (Close[0] > (nearestLongLevelPrice + deltaPrice)) pos = "short";						
-							
-							
-							// Дальше нужно определить,  если мы должны рассматривать выставление лимитника в шорт, а выставлен лимитник в лонг, то удалим его
-							if ((pos == "short") && (entryOrder.Name == "Buy")) CancelOrder(entryOrder);
-							
-							
-							// Дальше нужно определить,  если мы должны рассматривать выставление лимитника в лонг, а выставлен лимитник в шорт, то удалим его
-							if ((pos == "long") && (entryOrder.Name == "Sell short")) CancelOrder(entryOrder);
-							
-							// Дальше нужно проверить, если мы должны рассматривать выставление лимитника в шорт, и выставлен лимитник не по той цене, по которой есть ближайший уровень в шорт, то удалим его
-							if ((pos == "short") && (entryOrder.Name == "Sell short") && (entryOrder.LimitPrice != nearestShortLevelPrice)) CancelOrder(entryOrder);
-							
-							
-							// Дальше нужно проверить, если мы должны рассматривать выставление лимитника в лонг, и выставлен лимитник не по той цене, по которой есть ближайший уровень в лонг, то удалим его
-							if ((pos == "long") && (entryOrder.Name == "Buy") && (entryOrder.LimitPrice != nearestLongLevelPrice)) CancelOrder(entryOrder);
-							
-							// Подготовку провели и сейчас просто выставляем нужный лимитник
-							
-							// LONG
-							if (pos == "long") {
+						// Если есть выставленный лимитник
+						if (entryOrder.OrderType == OrderType.Limit) {
+							// Если есть только ближайший уровень в лонг
+							if ((sLevelCount == 0) && (lLevelCount > 0)) {
+								
+								// Удалим лимитку, если она стоит по невыгодной цене, т.е. в лонг, но ниже ,чем ближайший уровень в лонг
+								if (entryOrder.LimitPrice != nearestLongLevelPrice) {
+									CancelOrder(entryOrder);
+								}
+								
+								// Удалим лимитку, если это лимитка в шорт
+								if (entryOrder.Name == "Sell short") {
+									CancelOrder(entryOrder);
+								}
+								
+								// Все подготовительные операции сделаны, время выставить лимитник в лонг
 								Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в лонг по ближайшему уровню");
 								openOrder(Lot, "LONG", nearestLongLevelPrice, patternName, true);
 							}
 							
-							// SHORT
-							if (pos == "short") {
+							// Если есть только ближайший уровень в шорт
+							if ((sLevelCount > 0) && (lLevelCount == 0)) {
+								
+								// Удалим лимитку, если она стоит по невыгодной цене, т.е. в шорт, но выше ,чем ближайший уровень в шорт
+								if (entryOrder.LimitPrice != nearestShortLevelPrice) {
+									CancelOrder(entryOrder);
+								}
+								
+								// Удалим лимитку, если это лимитка в лонг
+								if (entryOrder.Name == "Buy") {
+									CancelOrder(entryOrder);
+								}
+								
+								// Все подготовительные операции сделаны, время выставить лимитник в шорт
 								Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в шорт по ближайшему уровню");
 								openOrder(Lot, "SHORT", nearestShortLevelPrice, patternName, true);
 							}
 							
-						}
-						
-						// Проверим, если это ситуация, когда нет НИ уровня в лонг НИ уровня в шорт, тогда делаем так
-						if ((nearestShortLevelPrice == 100000) && (nearestLongLevelPrice == 0)) {
-							// Просто удаляем лимит и все.
-							CancelOrder(entryOrder);
+							// Проверим, если это ситуация, когда есть И уровень в шорт И уровень лонг, тогда делаем так
+							if ((sLevelCount > 0) && (lLevelCount > 0)) {
+								// Посчитаем дистанцию между ближайшими уровнями
+								int distanceBetweenNearestLevels = priceToInt(nearestShortLevelPrice) - priceToInt(nearestLongLevelPrice);
+								// Найдем треть этого расстояния, именно эту дельту будем дальше использовать, чтобы проверить нахождение цены в пределах трети расстояния между уровнями
+								double deltaPrice = TickSize*(distanceBetweenNearestLevels/3);
+								
+								// Нужно понять, в какой трети расстояние между уровнями мы находимся сейчас и какой уровень выставлять.
+								string pos = "";
+								
+								if (Close[0] <= (nearestLongLevelPrice + deltaPrice)) {
+									// Если мы находимся в пределах трети расстояни между уровнями возле уровня в лонг, то нужно ставить лимитник в лонг
+									pos = "long";
+								} else if (Close[0] >= (nearestShortLevelPrice - deltaPrice)) {
+									// Если мы находимся в пределах трети расстояния между уровнями возле уровня в шорт, то нужно ставить лимитрик в шорт
+									pos = "short";						
+								} else {
+									pos = "flat";
+								}
+								
+								// Если мы не в статусе flat, то проверяем дальше
+								if (pos != "flat") {
+									
+									// Если мы должны рассматривать выставление лимитника в шорт
+									// SHORT
+									if (pos == "short") {
+										
+										// Если выставлен лимитник в лонг, то удалим его
+										if (entryOrder.Name == "Buy") CancelOrder(entryOrder);
+										
+										// Если выставлен лимитник в шорт не по той цене, по которой есть ближайший уровень в шорт, то удалим его
+										if ((entryOrder.Name == "Sell short") && (entryOrder.LimitPrice != nearestShortLevelPrice)) CancelOrder(entryOrder);
+										
+										// Все подготовительные операции завершены, время выставить лимитник в шорт
+										Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в шорт по ближайшему уровню");
+										openOrder(Lot, "SHORT", nearestShortLevelPrice, patternName, true);
+									}
+									
+									// LONG
+									if (pos == "long") {
+										
+										// Если выставлен лимитник в шорт, то удалим его
+										if (entryOrder.Name == "Sell short") CancelOrder(entryOrder);	
+										
+										// Если выставлен лимитник не по той цене, по которой есть ближайший уровень в лонг, то удалим его
+										if ((entryOrder.Name == "Buy") && (entryOrder.LimitPrice != nearestLongLevelPrice)) CancelOrder(entryOrder);
+									
+										// Все подготовительные операции завершены, время выставить лимитник в лонг
+										Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в лонг по ближайшему уровню");
+										openOrder(Lot, "LONG", nearestLongLevelPrice, patternName, true);
+									}
+								}
+							}
+							
+							// Проверим, если это ситуация, когда нет НИ уровня в лонг НИ уровня в шорт, тогда просто удалим лимитник
+							if ((sLevelCount == 0) && (lLevelCount == 0)) {
+								CancelOrder(entryOrder);
+							}
 						}
 					} else {
-						// Если установленного лимитника нет, установим его!
+						// Если выставленного лимитника нет, установим его!
 						
 						// Проверим, если это ситуация, когда есть И уровень в шорт И уровень лонг, тогда делаем так
 						if ((sLevelCount > 0) && (lLevelCount > 0)) {
 							int distanceBetweenNearestLevels = priceToInt(nearestShortLevelPrice) - priceToInt(nearestLongLevelPrice);
 							double deltaPrice = TickSize*(distanceBetweenNearestLevels/2);
-							// Eсли мы находимся ниже, чем середина расстояния между ближайшим уровнем в шорт и ближайшим уровнем в лонг, то готовимся выставить лимитник в лонг, т.к. мы ближе к уровню в лонг
-							if (Close[0] < (nearestShortLevelPrice - deltaPrice)) {
+							
+							// Eсли мы находимся в пределах половины расстояния между уровнями и ближе к уровню в лонг, то готовимся выставить лимитник в лонг, т.к. мы ближе к уровню в лонг
+							if (Close[0] <= (nearestLongLevelPrice + deltaPrice)) {
 								// Проверяем на наличие новостей и если все хорошо, то выставляем лимитни в лонг
 								//if (_Savos_News_For_Strategy().CanTrade[0] == 1) {
 									Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в лонг по ближайшему уровню");
@@ -803,8 +825,8 @@ namespace NinjaTrader.Strategy{
 								}*/
 							}
 							
-							// Eсли мы находимся выше, чем середина расстояния между ближайшим уровнем в шорт и ближайшим уровнем в лонг, то готовимся выставить лимитник в шорт, т.к. мы ближе к уровню в шорт
-							if (Close[0] > (nearestLongLevelPrice + deltaPrice)) {
+							// Eсли мы находимся в пределах половины расстояния между уровнями и ближе к уровню в шорт, то готовимся выставить лимитник в шорт, т.к. мы ближе к уровню в шорт
+							if (Close[0] >= (nearestShortLevelPrice - deltaPrice)) {
 								// Проверяем на наличие новостей и если все хорошо, то выставляем лимитни в шорт
 								//if (_Savos_News_For_Strategy().CanTrade[0] == 1) {
 									Print (Instrument.FullName.ToString()+" |||" + "Выставляем лимитник в шорт по ближайшему уровню");
@@ -848,7 +870,7 @@ namespace NinjaTrader.Strategy{
 				}
 			
 				if (entryOrder != null) {
-					di = String.Format("alwaysActiveOneLimitOrder={0}\nentryOrder.Name={1}\n",alwaysActiveOneLimitOrder,entryOrder.Name);
+					di = String.Format("alwaysActiveOneLimitOrder={0}\nentryOrder.Name={1}\norderType={2}\n",alwaysActiveOneLimitOrder,entryOrder.Name,entryOrder.OrderType);
 				} else {
 					di = String.Format("alwaysActiveOneLimitOrder={0}\n",alwaysActiveOneLimitOrder);
 				}
@@ -863,7 +885,7 @@ namespace NinjaTrader.Strategy{
 				} else {
 					di += "Ближайший POC LONG: нет"+"\n";
 				}
-				di +="\n\n";
+				di +="\n\n\n";
            		DrawTextFixed("dibl", di, TextPosition.BottomLeft, Color.White, new Font ("Arial", 10, FontStyle.Regular), Color.White, Color.DarkBlue, 8);
 			} else {
 				di = "Новости, не торгуем!!!";
